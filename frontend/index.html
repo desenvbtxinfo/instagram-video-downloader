@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Baixar vídeo do Instagram</title>
+<meta name="description" content="Cole o link de um vídeo público do Instagram para tentar baixá-lo.">
+<style>
+:root{color-scheme:dark;--bg:#0b0c12;--panel:#171923;--text:#f6f6fa;--muted:#a5a7b5;--pink:#d946ef;--purple:#7c3aed}
+*{box-sizing:border-box}body{margin:0;min-height:100vh;display:grid;place-items:center;padding:22px;font-family:system-ui,-apple-system,Segoe UI,sans-serif;color:var(--text);background:radial-gradient(ellipse at top,#30203f 0%,var(--bg) 60%)}
+main{width:min(100%,680px);padding:clamp(24px,5vw,44px);border:1px solid #363545;border-radius:24px;background:rgba(23,25,35,.97);box-shadow:0 24px 80px #0008}
+.logo{display:grid;place-items:center;width:54px;height:54px;border-radius:16px;background:linear-gradient(135deg,var(--pink),var(--purple));font-size:28px;margin-bottom:20px}
+h1{font-size:clamp(28px,5vw,42px);line-height:1.1;letter-spacing:-1.2px;margin:0 0 12px}p{color:var(--muted);line-height:1.6}
+form{display:flex;gap:10px;margin-top:26px}input{flex:1;min-width:0;background:#0d0e15;color:var(--text);border:1px solid #414153;border-radius:12px;padding:16px;font-size:16px;outline:none}input:focus{border-color:var(--pink);box-shadow:0 0 0 3px #d946ef25}button{border:0;border-radius:12px;padding:0 20px;min-height:52px;font-weight:700;color:white;cursor:pointer;background:linear-gradient(135deg,var(--pink),var(--purple))}button:disabled{opacity:.55;cursor:wait}
+.note{margin-top:20px;padding:13px 15px;border-radius:12px;background:#242432;color:#c7c7d3;font-size:13px;line-height:1.55}.status{margin-top:16px;font-size:14px;line-height:1.5}.status.error{color:#ffc3cf}.status.ok{color:#b6f3ca}.footer{font-size:12px;color:#858796;margin-top:20px}
+@media(max-width:540px){form{flex-direction:column}button{width:100%}}
+</style>
+</head>
+<body><main>
+<div class="logo" aria-hidden="true">↓</div>
+<h1>Baixar vídeo do Instagram</h1>
+<p>Cole o link de um Reel ou vídeo público para tentar salvar o arquivo no seu dispositivo.</p>
+<form id="download-form">
+<input id="url" type="url" placeholder="https://www.instagram.com/reel/..." aria-label="URL do Instagram" required>
+<button id="submit" type="submit">Baixar vídeo</button>
+</form>
+<div id="status" class="status" role="status" aria-live="polite"></div>
+<div class="note">Use somente vídeos que você publicou ou tem autorização para salvar. Vídeos privados ou sujeitos a restrições podem não funcionar. Esta ferramenta não remove marcas-d'água já incorporadas ao arquivo.</div>
+<div class="footer">Interface estática para GitHub Pages • O serviço de download precisa de um backend separado.</div>
+</main>
+<script>
+/*
+  CONFIGURAÇÃO: depois de publicar o backend, substitua a URL abaixo pela URL
+  pública do seu serviço Render, sem barra no final.
+*/
+const API_BASE_URL = "COLOQUE_A_URL_DO_BACKEND_AQUI";
+const form = document.getElementById("download-form");
+const input = document.getElementById("url");
+const button = document.getElementById("submit");
+const statusBox = document.getElementById("status");
+
+form.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const url = input.value.trim();
+  if (!/^https?:\/\/(www\.)?(m\.)?instagram\.com\//i.test(url)) {
+    statusBox.className = "status error";
+    statusBox.textContent = "Insira uma URL válida do Instagram.";
+    return;
+  }
+  if (API_BASE_URL === "COLOQUE_A_URL_DO_BACKEND_AQUI") {
+    statusBox.className = "status error";
+    statusBox.textContent = "O site ainda precisa ser conectado ao backend. Siga o README do projeto para configurar a URL do serviço.";
+    return;
+  }
+  button.disabled = true;
+  button.textContent = "Processando...";
+  statusBox.className = "status";
+  statusBox.textContent = "Tentando obter o vídeo. Isso pode levar alguns instantes.";
+  try {
+    const response = await fetch(`${API_BASE_URL}/download`, {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({url})
+    });
+    if (!response.ok) {
+      let message = "Não foi possível baixar este vídeo.";
+      try { const data = await response.json(); if (data.error) message = data.error; } catch {}
+      throw new Error(message);
+    }
+    const blob = await response.blob();
+    const disposition = response.headers.get("Content-Disposition") || "";
+    const match = disposition.match(/filename="?([^";]+)"?/i);
+    const filename = match ? match[1] : "video-instagram.mp4";
+    const objectUrl = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = objectUrl; a.download = filename;
+    document.body.appendChild(a); a.click(); a.remove();
+    URL.revokeObjectURL(objectUrl);
+    statusBox.className = "status ok";
+    statusBox.textContent = "Download iniciado.";
+  } catch (error) {
+    statusBox.className = "status error";
+    statusBox.textContent = error.message || "Falha de conexão com o serviço de download.";
+  } finally {
+    button.disabled = false;
+    button.textContent = "Baixar vídeo";
+  }
+});
+</script>
+</body></html>
